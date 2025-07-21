@@ -7,14 +7,22 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 
 	"github.com/ChristianVilen/flight-heatmap/internal/api"
+	"github.com/ChristianVilen/flight-heatmap/internal/config"
 	db "github.com/ChristianVilen/flight-heatmap/internal/db"
 )
 
-func connectToDB() *sql.DB {
-	dbConn, err := sql.Open("postgres", "postgresql://postgres:postgres@localhost:5433/opensky?sslmode=disable")
+func init() {
+	if err := godotenv.Load(); err != nil {
+		log.Println(".env file not found")
+	}
+}
+
+func connectToDB(cfg config.Config) *sql.DB {
+	dbConn, err := sql.Open("postgres", cfg.DBURL)
 	if err != nil {
 		log.Fatal("cannot connect to db:", err)
 	}
@@ -27,7 +35,9 @@ func connectToDB() *sql.DB {
 }
 
 func main() {
-	dbConn := connectToDB()
+	cfg := config.Load()
+
+	dbConn := connectToDB(cfg)
 	defer dbConn.Close()
 
 	queries := db.New(dbConn)
