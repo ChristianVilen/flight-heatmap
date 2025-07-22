@@ -69,16 +69,23 @@ type positionInserter interface {
 	InsertPosition(ctx context.Context, params db.InsertPositionParams) error
 }
 
-//  "https://opensky-network.org/api/states/all?lamin=59.0&lamax=62.0&lomin=23.0&lomax=27.0"
+type Fetcher struct {
+	Client       *http.Client
+	TokenFetcher func(cfg config.Config) (string, error)
+	Inserter     positionInserter
+	Config       config.Config
+	APIURL       string
+}
 
 // FetchAndStore polls OpenSky and writes aircraft data to DB
-func FetchAndStore(ctx context.Context, client *http.Client, inserter positionInserter, cfg config.Config, apiURL string) error {
-	token, err := getOpenSkyToken(cfg)
+func (f *Fetcher) FetchAndStore(ctx context.Context) error {
+	log.Println("Fetching OpenSky data…")
+	token, err := f.TokenFetcher(f.Config)
 	if err != nil {
 		return fmt.Errorf("failed to get token: %w", err)
 	}
 
-	req, err := http.NewRequest("GET", apiURL, nil)
+	req, err := http.NewRequest("GET", f.APIURL, nil)
 	if err != nil {
 		return err
 	}
@@ -99,7 +106,11 @@ func FetchAndStore(ctx context.Context, client *http.Client, inserter positionIn
 		return fmt.Errorf("json decode failed: %w", err)
 	}
 
-	for _, s := range result.States {
+	return f.storeStates(ctx, result.States)
+}
+
+func (f *Fetcher) storeStates(ctx context.Context, states [][]any) error {
+	for _, s := range states {
 		if len(s) < 12 || s[5] == nil || s[6] == nil {
 			continue
 		}
@@ -118,17 +129,26 @@ func FetchAndStore(ctx context.Context, client *http.Client, inserter positionIn
 			VerticalRate:  toNullFloat64(s[11]),
 		}
 
-		if err := inserter.InsertPosition(ctx, params); err != nil {
-			log.Printf("insert failed: %v", err)
+		err := f.Inserter.InsertPosition(ctx, params)
+		if err != nil {
+			if isDuplicateError(err) {
+				log.Print("duplicate, skipped")
+			} else {
+				log.Printf("insert failed: %v", err)
+			}
 		}
 	}
 
-	log.Print(result)
+	log.Print("Done inserting")
 
 	return nil
 }
 
-func getOpenSkyToken(cfg config.Config) (string, error) {
+func isDuplicateError(err error) bool {
+	return strings.Contains(err.Error(), "duplicate key value violates unique constraint")
+}
+
+func GetOpenSkyToken(cfg config.Config) (string, error) {
 	form := url.Values{}
 	form.Add("grant_type", "client_credentials")
 	form.Add("client_id", cfg.ClientID)

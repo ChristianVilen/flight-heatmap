@@ -108,6 +108,9 @@ table "aircraft_positions" {
   primary_key {
     columns = [column.id]
   }
+  unique "aircraft_positions_icao24_time_position_key" {
+    columns = [column.icao24, column.time_position]
+  }
 }
 schema "atlas_schema_revisions" {
 }

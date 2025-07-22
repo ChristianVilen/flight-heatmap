@@ -24,8 +24,8 @@ func (m *mockDB) InsertPosition(ctx context.Context, params db.InsertPositionPar
 
 func TestFetchAndInsert(t *testing.T) {
 	// Sample API response mimicking OpenSky /states/all
-	mockResponse := map[string]interface{}{
-		"states": [][]interface{}{
+	mockResponse := map[string]any{
+		"states": [][]any{
 			{
 				"abc123",     // icao24
 				"TEST123",    // callsign
@@ -52,13 +52,15 @@ func TestFetchAndInsert(t *testing.T) {
 	mock := &mockDB{}
 	cfg := config.Config{ClientID: "test", ClientSecret: "test"}
 
-	err := opensky.FetchAndStore(
-		context.Background(),
-		apiServer.Client(),
-		mock,
-		cfg,
-		apiServer.URL,
-	)
+	f := opensky.Fetcher{
+		Client:       apiServer.Client(),
+		TokenFetcher: func(cfg config.Config) (string, error) { return "mock-token", nil },
+		Inserter:     mock,
+		Config:       cfg,
+		APIURL:       apiServer.URL,
+	}
+
+	err := f.FetchAndStore(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -75,4 +77,3 @@ func TestFetchAndInsert(t *testing.T) {
 		t.Errorf("expected OnGround=true, got: %v", insert.OnGround)
 	}
 }
-
