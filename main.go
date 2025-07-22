@@ -61,9 +61,13 @@ func main() {
 
 	router.HandleFunc("GET /api/heatmap", api.HeatmapHandler(queries))
 
+	stack := middleware.CreateStack(
+		middleware.Logging,
+	)
+
 	server := http.Server{
 		Addr:    ":8080",
-		Handler: middleware.Logging(router),
+		Handler: stack(router),
 	}
 
 	fmt.Println("Server listening on port :8080")
