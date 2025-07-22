@@ -1,3 +1,4 @@
+// Package opensky interacts with OpenSky API to get flight data
 package opensky
 
 import (

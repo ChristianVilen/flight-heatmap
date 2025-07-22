@@ -7,13 +7,13 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 
 	"github.com/ChristianVilen/flight-heatmap/internal/api"
 	"github.com/ChristianVilen/flight-heatmap/internal/config"
 	db "github.com/ChristianVilen/flight-heatmap/internal/db"
+	"github.com/ChristianVilen/flight-heatmap/internal/middleware"
 	"github.com/ChristianVilen/flight-heatmap/internal/opensky"
 )
 
@@ -57,17 +57,15 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	r := chi.NewRouter()
+	router := http.NewServeMux()
 
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			log.Printf("%s %s", r.Method, r.URL.Path)
-			next.ServeHTTP(w, r)
-		})
-	})
+	router.HandleFunc("GET /api/heatmap", api.HeatmapHandler(queries))
 
-	r.Get("/api/heatmap", api.HeatmapHandler(queries))
+	server := http.Server{
+		Addr:    ":8080",
+		Handler: middleware.Logging(router),
+	}
 
-	fmt.Println("Server started on :8080")
-	log.Fatal(http.ListenAndServe(":8080", r))
+	fmt.Println("Server listening on port :8080")
+	server.ListenAndServe()
 }
