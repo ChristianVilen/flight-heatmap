@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -36,6 +37,8 @@ func connectToDB(cfg config.Config) *sql.DB {
 	return dbConn
 }
 
+var APIURLStatesAll = "https://opensky-network.org/api/states/all"
+
 func main() {
 	cfg := config.Load()
 	ctx := context.Background()
@@ -44,13 +47,25 @@ func main() {
 	defer dbConn.Close()
 
 	queries := db.New(dbConn)
+	baseURL, err := url.Parse(APIURLStatesAll)
+	if err != nil {
+		log.Fatal("invalid base URL:", err)
+	}
+
+	paramsSouthFin := url.Values{}
+	paramsSouthFin.Set("lamin", "59.0")
+	paramsSouthFin.Set("lamax", "62.0")
+	paramsSouthFin.Set("lomin", "23.0")
+	paramsSouthFin.Set("lomax", "27.0")
+
+	baseURL.RawQuery = paramsSouthFin.Encode()
 
 	fetcher := opensky.Fetcher{
 		Client:       http.DefaultClient,
 		TokenFetcher: opensky.GetOpenSkyToken,
 		Inserter:     db.New(dbConn),
 		Config:       cfg,
-		APIURL:       "https://opensky-network.org/api/states/all?lamin=59.0&lamax=62.0&lomin=23.0&lomax=27.0",
+		APIURL:       baseURL.String(),
 	}
 
 	if err := fetcher.FetchAndStore(ctx); err != nil {
