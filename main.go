@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -68,9 +69,18 @@ func main() {
 		APIURL:       baseURL.String(),
 	}
 
-	if err := fetcher.FetchAndStore(ctx); err != nil {
-		log.Fatal(err.Error())
-	}
+	// poll every 30 seconds
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			log.Println("Polling OpenSky API...")
+			if err := fetcher.FetchAndStore(ctx); err != nil {
+				log.Printf("fetch error: %v", err)
+			}
+		}
+	}()
 
 	router := http.NewServeMux()
 
