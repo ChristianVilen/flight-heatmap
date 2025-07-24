@@ -5,9 +5,7 @@
     "dev:frontend": "pnpm --filter ./web dev",
     "dev:backend": "go run ./server/main.go",
     "dev:db": "docker compose up > ./logs/db.log 2>&1",
-    "migrate": "atlas migrate apply --env local",
-    "migrate:new": "atlas migrate diff --env local",
-    "sqlc": "sqlc generate",
+    "sqlc": "cd server && sqlc generate",
     "test:backend": "go test ./...",
     "lint:backend": "golangci-lint run",
     "lint:frontend": "eslint web/src --ext .ts,.tsx"
