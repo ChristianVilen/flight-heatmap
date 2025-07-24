@@ -1,18 +1,29 @@
 <script lang="ts">
-  import { onMount } from "svelte";
-  import L from "leaflet";
+  import L, { bounds, Map as LeafletMap } from "leaflet";
   import "leaflet/dist/leaflet.css";
+  import "leaflet.heat";
 
-  let map;
+  type HeatPoint = {
+    lat_bin: number;
+    lon_bin: number;
+    count: number;
+  };
 
-  const initialView = [39.8283, -98.5795];
-  function createMap(container) {
-    let m = L.map(container, { preferCanvas: true }).setView(initialView, 5);
+  let map: LeafletMap | null = null;
+
+  const helsinkiAirportCoords: [number, number] = [60.3172, 24.9633];
+
+  function createMap(container: HTMLElement): LeafletMap {
+    const m = L.map(container, { preferCanvas: true }).setView(
+      helsinkiAirportCoords,
+      12,
+    );
+
     L.tileLayer(
       "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
       {
-        attribution: `&copy;<a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>,
-	        &copy;<a href="https://carto.com/attributions" target="_blank">CARTO</a>`,
+        attribution: `&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>,
+          &copy; <a href="https://carto.com/attributions" target="_blank">CARTO</a>`,
         subdomains: "abcd",
         maxZoom: 14,
       },
@@ -21,43 +32,40 @@
     return m;
   }
 
-  function mapAction(container) {
+  async function fetchAndRenderHeat() {
+    const res = await fetch("/api/heatmap");
+    const points: HeatPoint[] = await res.json();
+    const heatData = points.map((p) => [p.LatBin, p.LonBin, p.Count]);
+
+    L.heatLayer(heatData, {
+      radius: 15,
+      blur: 10,
+      maxZoom: 14,
+      bounds: map?.getBounds(),
+    }).addTo(map);
+  }
+
+  function mapAction(container: HTMLElement) {
     map = createMap(container);
+
+    fetchAndRenderHeat();
 
     return {
       destroy: () => {
-        map.remove();
+        map?.remove();
         map = null;
       },
     };
   }
+
   function resizeMap() {
-    if (map) {
-      map.invalidateSize();
-    }
+    map?.invalidateSize();
   }
 </script>
 
-<link
-  rel="stylesheet"
-  href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css"
-  integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
-  crossorigin=""
-/>
-<div class="map" style="height:100%;width:100%" use:mapAction />
+<svelte:window on:resize={resizeMap} />
+
+<div use:mapAction class="w-full h-full"></div>
 
 <style>
-  .map :global(.marker-text) {
-    width: 100%;
-    text-align: center;
-    font-weight: 600;
-    background-color: #444;
-    color: #eee;
-    border-radius: 0.5rem;
-  }
-
-  .map :global(.map-marker) {
-    width: 30px;
-    transform: translateX(-50%) translateY(-25%);
-  }
 </style>
