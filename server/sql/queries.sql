@@ -15,5 +15,4 @@ SELECT
     (floor(longitude * 4)/4)::float8 AS lon_bin,
     COUNT(*) AS count
 FROM aircraft_positions
-WHERE time_position > now() - interval '15 minutes'
 GROUP BY lat_bin, lon_bin;
