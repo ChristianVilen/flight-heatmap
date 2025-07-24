@@ -3,62 +3,16 @@ package opensky
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/ChristianVilen/flight-heatmap/server/internal/config"
 	db "github.com/ChristianVilen/flight-heatmap/server/internal/db"
 )
-
-func toNullString(v any) sql.NullString {
-	s, ok := v.(string)
-	return sql.NullString{
-		String: s,
-		Valid:  ok && s != "",
-	}
-}
-
-func toNullFloat64(v any) sql.NullFloat64 {
-	f, ok := v.(float64)
-	return sql.NullFloat64{
-		Float64: f,
-		Valid:   ok,
-	}
-}
-
-func toNullBool(v any) sql.NullBool {
-	b, ok := v.(bool)
-	return sql.NullBool{
-		Bool:  b,
-		Valid: ok,
-	}
-}
-
-func ToNullTime(v any) sql.NullTime {
-	switch val := v.(type) {
-	case float64:
-		// OpenSky uses UNIX timestamp in seconds
-		t := time.Unix(int64(val), 0)
-		return sql.NullTime{Time: t, Valid: true}
-	default:
-		return sql.NullTime{Valid: false}
-	}
-}
-
-func ToNullFloat64(v any) sql.NullFloat64 {
-	switch val := v.(type) {
-	case float64:
-		return sql.NullFloat64{Float64: val, Valid: true}
-	default:
-		return sql.NullFloat64{Valid: false}
-	}
-}
 
 // OpenSkyResponse maps the full OpenSky state vector API
 type OpenSkyResponse struct {
