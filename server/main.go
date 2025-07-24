@@ -12,11 +12,11 @@ import (
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 
-	"github.com/ChristianVilen/flight-heatmap/internal/api"
-	"github.com/ChristianVilen/flight-heatmap/internal/config"
-	db "github.com/ChristianVilen/flight-heatmap/internal/db"
-	"github.com/ChristianVilen/flight-heatmap/internal/middleware"
-	"github.com/ChristianVilen/flight-heatmap/internal/opensky"
+	"github.com/ChristianVilen/flight-heatmap/server/internal/api"
+	"github.com/ChristianVilen/flight-heatmap/server/internal/config"
+	db "github.com/ChristianVilen/flight-heatmap/server/internal/db"
+	"github.com/ChristianVilen/flight-heatmap/server/internal/middleware"
+	"github.com/ChristianVilen/flight-heatmap/server/internal/opensky"
 )
 
 func init() {
@@ -25,17 +25,23 @@ func init() {
 	}
 }
 
-func connectToDB(cfg config.Config) *sql.DB {
-	dbConn, err := sql.Open("postgres", cfg.DBURL)
-	if err != nil {
-		log.Fatal("cannot connect to db:", err)
-	}
+func connectToDBWithRetry(cfg config.Config, maxRetries int, delay time.Duration) *sql.DB {
+	retries := 0
+	for range time.Tick(delay) {
+		if retries >= maxRetries {
+			log.Fatalf("❌ Could not connect to DB after %d retries", maxRetries)
+		}
 
-	if err := dbConn.Ping(); err != nil {
-		log.Fatal("cannot ping db:", err)
-	}
+		dbConn, err := sql.Open("postgres", cfg.DBURL)
+		if err == nil && dbConn.Ping() == nil {
+			log.Println("Connected to DB")
+			return dbConn
+		}
 
-	return dbConn
+		log.Printf("⏳ DB not ready (attempt %d/%d), retrying in %v...", retries+1, maxRetries, delay)
+		retries++
+	}
+	return nil
 }
 
 var APIURLStatesAll = "https://opensky-network.org/api/states/all"
@@ -44,7 +50,7 @@ func main() {
 	cfg := config.Load()
 	ctx := context.Background()
 
-	dbConn := connectToDB(cfg)
+	dbConn := connectToDBWithRetry(cfg, 10, 2*time.Second)
 	defer dbConn.Close()
 
 	queries := db.New(dbConn)

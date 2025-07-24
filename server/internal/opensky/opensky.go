@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ChristianVilen/flight-heatmap/internal/config"
-	db "github.com/ChristianVilen/flight-heatmap/internal/db"
+	"github.com/ChristianVilen/flight-heatmap/server/internal/config"
+	db "github.com/ChristianVilen/flight-heatmap/server/internal/db"
 )
 
 func toNullString(v any) sql.NullString {

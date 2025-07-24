@@ -1,0 +1,18 @@
+{
+  "name": "flight-heatmap",
+  "scripts": {
+    "dev": "concurrently -k -n FRONTEND,BACKEND,DB -c green,blue,yellow \"pnpm dev:frontend\" \"pnpm dev:backend\" \"pnpm dev:db\"",
+    "dev:frontend": "pnpm --filter ./web dev",
+    "dev:backend": "go run ./server/main.go",
+    "dev:db": "docker compose up > ./logs/db.log 2>&1",
+    "migrate": "atlas migrate apply --env local",
+    "migrate:new": "atlas migrate diff --env local",
+    "sqlc": "sqlc generate",
+    "test:backend": "go test ./...",
+    "lint:backend": "golangci-lint run",
+    "lint:frontend": "eslint web/src --ext .ts,.tsx"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

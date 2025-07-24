@@ -7,9 +7,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/ChristianVilen/flight-heatmap/internal/config"
-	"github.com/ChristianVilen/flight-heatmap/internal/db"
-	"github.com/ChristianVilen/flight-heatmap/internal/opensky"
+	"github.com/ChristianVilen/flight-heatmap/server/internal/config"
+	"github.com/ChristianVilen/flight-heatmap/server/internal/db"
+	"github.com/ChristianVilen/flight-heatmap/server/internal/opensky"
 )
 
 // mockDB implements db.Querier for testing

@@ -1,2 +1,11 @@
 data/
-.env
+build
+**/node_modules
+*.tsbuildinfo
+/.idea
+coverage
+.DS_Store
+**/.env
+**/.dccache
+*.swp
+logs/

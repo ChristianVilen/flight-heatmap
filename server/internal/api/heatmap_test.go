@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	db "github.com/ChristianVilen/flight-heatmap/internal/db"
+	db "github.com/ChristianVilen/flight-heatmap/server/internal/db"
 )
 
 type mockQueries struct{}

@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, sans-serif;
+  background-color: #f9fafb; /* Tailwind slate-50 */
+}
+
+a {
+  @apply text-blue-600 hover:underline;
+}
+
+button {
+  @apply px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  @apply font-semibold text-gray-800;
+}
+
+input,
+select,
+textarea {
+  @apply border border-gray-300 rounded px-2 py-1;
+}

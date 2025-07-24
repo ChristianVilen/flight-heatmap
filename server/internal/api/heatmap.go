@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/ChristianVilen/flight-heatmap/internal/db"
+	"github.com/ChristianVilen/flight-heatmap/server/internal/db"
 )
 
 type HeatmapQuerier interface {
