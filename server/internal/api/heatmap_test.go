@@ -12,8 +12,8 @@ import (
 
 type mockQueries struct{}
 
-func (m *mockQueries) GetHeatmapData(ctx context.Context) ([]db.GetHeatmapDataRow, error) {
-	return []db.GetHeatmapDataRow{
+func (m *mockQueries) GetHeatmapDataDynamic(ctx context.Context, args db.GetHeatmapDataDynamicParams) ([]db.GetHeatmapDataDynamicRow, error) {
+	return []db.GetHeatmapDataDynamicRow{
 		{
 			LatBin: float64(60.25),
 			LonBin: float64(24.75),
@@ -23,7 +23,7 @@ func (m *mockQueries) GetHeatmapData(ctx context.Context) ([]db.GetHeatmapDataRo
 }
 
 func TestHeatmapHandler(t *testing.T) {
-	req := httptest.NewRequest("GET", "/api/heatmap", nil)
+	req := httptest.NewRequest("GET", "/api/heatmap?bin=80&minutes=15", nil)
 	w := httptest.NewRecorder()
 
 	handler := HeatmapHandler(&mockQueries{})
@@ -36,7 +36,7 @@ func TestHeatmapHandler(t *testing.T) {
 		t.Fatalf("expected 200 OK, got %d", resp.StatusCode)
 	}
 
-	var data []db.GetHeatmapDataRow
+	var data []db.GetHeatmapDataDynamicRow
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		t.Fatal("invalid JSON response")
 	}

@@ -8,7 +8,9 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ChristianVilen/flight-heatmap/server/internal/config"
 	db "github.com/ChristianVilen/flight-heatmap/server/internal/db"
@@ -30,6 +32,8 @@ type Fetcher struct {
 	Inserter     positionInserter
 	Config       config.Config
 	APIURL       string
+
+	nextAllowed time.Time
 }
 
 // FetchAndStore polls OpenSky and writes aircraft data to DB
@@ -46,10 +50,23 @@ func (f *Fetcher) FetchAndStore(ctx context.Context) error {
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 
+	if time.Now().Before(f.nextAllowed) {
+		log.Println("Skipping fetch due to backoff.")
+		return nil
+	}
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		if resp.StatusCode == http.StatusTooManyRequests {
+			retrySeconds, _ := strconv.Atoi(resp.Header.Get("X-Rate-Limit-Retry-After-Seconds"))
+			f.nextAllowed = time.Now().Add(time.Duration(retrySeconds) * time.Second)
+
+			return nil
+		}
+
 		return err
 	}
+
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -65,8 +82,33 @@ func (f *Fetcher) FetchAndStore(ctx context.Context) error {
 }
 
 func (f *Fetcher) storeStates(ctx context.Context, states [][]any) error {
+	const maxDistanceFromEFHK = 50.0 // in km
+	const maxAltitude = 10000.0      // meters
+	duplicateErrors := 0
+
 	for _, s := range states {
-		if len(s) < 12 || s[5] == nil || s[6] == nil {
+		if len(s) < 12 {
+			continue
+		}
+
+		lat := toNullFloat64(s[6])
+		lon := toNullFloat64(s[5])
+		if !lat.Valid || !lon.Valid {
+			continue
+		}
+
+		if toNullBool(s[8]).Bool { // On ground
+			continue
+		}
+
+		// Optionally filter by distance from EFHK
+		if !IsNearEFHK(lat.Float64, lon.Float64, maxDistanceFromEFHK) {
+			continue
+		}
+
+		// Optional: skip high altitude cruising aircraft
+		alt := toNullFloat64(s[7])
+		if alt.Valid && alt.Float64 > maxAltitude {
 			continue
 		}
 
@@ -87,7 +129,7 @@ func (f *Fetcher) storeStates(ctx context.Context, states [][]any) error {
 		err := f.Inserter.InsertPosition(ctx, params)
 		if err != nil {
 			if isDuplicateError(err) {
-				log.Print("duplicate, skipped")
+				duplicateErrors++
 			} else {
 				log.Printf("insert failed: %v", err)
 			}
@@ -95,6 +137,7 @@ func (f *Fetcher) storeStates(ctx context.Context, states [][]any) error {
 	}
 
 	log.Print("Done inserting")
+	log.Printf("duplicates %d", duplicateErrors)
 
 	return nil
 }

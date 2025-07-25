@@ -29,7 +29,7 @@ func connectToDBWithRetry(cfg config.Config, maxRetries int, delay time.Duration
 	retries := 0
 	for range time.Tick(delay) {
 		if retries >= maxRetries {
-			log.Fatalf("❌ Could not connect to DB after %d retries", maxRetries)
+			log.Fatalf("Could not connect to DB after %d retries", maxRetries)
 		}
 
 		dbConn, err := sql.Open("postgres", cfg.DBURL)
@@ -79,7 +79,7 @@ func main() {
 		APIURL:       baseURL.String(),
 	}
 
-	PollInterval := 10 * time.Second
+	PollInterval := 45 * time.Second
 
 	go func() {
 		ticker := time.NewTicker(PollInterval)
