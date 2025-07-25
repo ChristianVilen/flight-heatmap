@@ -8,3 +8,8 @@ sql:
         package: "db"
         out: "internal/db"
         emit_interface: true
+        overrides:
+          - db_type: "text"
+            go_type: "database/sql.NullString"
+          - db_type: "float8"
+            go_type: "database/sql.NullFloat64"

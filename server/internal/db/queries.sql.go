@@ -10,30 +10,37 @@ import (
 	"database/sql"
 )
 
-const getHeatmapData = `-- name: GetHeatmapData :many
+const getHeatmapDataDynamic = `-- name: GetHeatmapDataDynamic :many
 SELECT
-    (floor(latitude * 4)/4)::float8 AS lat_bin,
-    (floor(longitude * 4)/4)::float8 AS lon_bin,
-    COUNT(*) AS count
+  (floor(latitude * $1) / $1)::float8 AS lat_bin,
+  (floor(longitude * $1) / $1)::float8 AS lon_bin,
+  COUNT(*) AS count
 FROM aircraft_positions
+WHERE 
+  ($2::text IS NULL OR time_position > now() - ($2 || ' minutes')::interval)
 GROUP BY lat_bin, lon_bin
 `
 
-type GetHeatmapDataRow struct {
-	LatBin float64
-	LonBin float64
+type GetHeatmapDataDynamicParams struct {
+	BinSize  sql.NullFloat64
+	Interval sql.NullString
+}
+
+type GetHeatmapDataDynamicRow struct {
+	LatBin sql.NullFloat64
+	LonBin sql.NullFloat64
 	Count  int64
 }
 
-func (q *Queries) GetHeatmapData(ctx context.Context) ([]GetHeatmapDataRow, error) {
-	rows, err := q.db.QueryContext(ctx, getHeatmapData)
+func (q *Queries) GetHeatmapDataDynamic(ctx context.Context, arg GetHeatmapDataDynamicParams) ([]GetHeatmapDataDynamicRow, error) {
+	rows, err := q.db.QueryContext(ctx, getHeatmapDataDynamic, arg.BinSize, arg.Interval)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetHeatmapDataRow
+	var items []GetHeatmapDataDynamicRow
 	for rows.Next() {
-		var i GetHeatmapDataRow
+		var i GetHeatmapDataDynamicRow
 		if err := rows.Scan(&i.LatBin, &i.LonBin, &i.Count); err != nil {
 			return nil, err
 		}

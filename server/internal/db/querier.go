@@ -9,7 +9,7 @@ import (
 )
 
 type Querier interface {
-	GetHeatmapData(ctx context.Context) ([]GetHeatmapDataRow, error)
+	GetHeatmapDataDynamic(ctx context.Context, arg GetHeatmapDataDynamicParams) ([]GetHeatmapDataDynamicRow, error)
 	InsertPosition(ctx context.Context, arg InsertPositionParams) error
 }
 
