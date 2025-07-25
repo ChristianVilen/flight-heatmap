@@ -59,13 +59,17 @@ func main() {
 		log.Fatal("invalid base URL:", err)
 	}
 
-	paramsSouthFin := url.Values{}
-	paramsSouthFin.Set("lamin", "59.0")
-	paramsSouthFin.Set("lamax", "62.0")
-	paramsSouthFin.Set("lomin", "23.0")
-	paramsSouthFin.Set("lomax", "27.0")
+	centerLat := 60.3172
+	centerLon := 24.9633
+	radiusKm := 50.0
 
-	baseURL.RawQuery = paramsSouthFin.Encode()
+	bbox := opensky.GetBoundingBox(centerLat, centerLon, radiusKm)
+
+	params := url.Values{}
+	params.Set("lamin", fmt.Sprintf("%.4f", bbox.LatMin))
+	params.Set("lamax", fmt.Sprintf("%.4f", bbox.LatMax))
+	params.Set("lomin", fmt.Sprintf("%.4f", bbox.LonMin))
+	params.Set("lomax", fmt.Sprintf("%.4f", bbox.LonMax))
 
 	fetcher := opensky.Fetcher{
 		Client:       http.DefaultClient,
@@ -75,9 +79,10 @@ func main() {
 		APIURL:       baseURL.String(),
 	}
 
-	// poll every 30 seconds
+	PollInterval := 10 * time.Second
+
 	go func() {
-		ticker := time.NewTicker(30 * time.Second)
+		ticker := time.NewTicker(PollInterval)
 		defer ticker.Stop()
 
 		for range ticker.C {
