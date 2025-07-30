@@ -4,10 +4,11 @@
   import "leaflet/dist/leaflet.css";
   import "leaflet.heat";
 
-  type HeatPoint = {
+  type MarkerData = {
+    id: number;
     lat: number;
     lon: number;
-    count: number; // intensity
+    count: number;
   };
 
   const POLL_INTERVAL_MS = 10000;
@@ -26,14 +27,16 @@
   let previousBin = 0;
   let selectedMinutes = 30;
   let interval: ReturnType<typeof setInterval>;
+  let markerLayerGroup: L.LayerGroup = L.layerGroup();
+
+  let currentMode: "heatmap" | "markers" = "heatmap";
+  const ZOOM_THRESHOLD = 13;
 
   function getBin(zoom: number): number {
     return zoom >= 13 ? 160 : zoom >= 11 ? 80 : 40;
   }
 
-  async function fetchHeatData(
-    bin: number,
-  ): Promise<[number, number, number][]> {
+  async function fetchMarkerData(bin: number): Promise<MarkerData[]> {
     const url = new URL("/api/heatmap", window.location.origin);
     url.searchParams.set("bin", bin.toString());
     if (selectedMinutes !== null) {
@@ -41,29 +44,82 @@
     }
 
     const res = await fetch(url.toString());
-    const points: HeatPoint[] = await res.json();
+    const points: MarkerData[] = await res.json();
 
     if (!points) return [];
-    return points.map((p) => [p.lat, p.lon, p.count]);
+    return points;
   }
 
   async function updateHeatmap() {
-    if (!map) return;
+    if (!map || currentMode !== "heatmap") return;
+
     const bin = getBin(map.getZoom());
-    const data = await fetchHeatData(bin);
-    heatLayer.setLatLngs(data);
+    const data = await fetchMarkerData(bin);
+
+    if (heatLayer) {
+      heatLayer.setLatLngs(data.map((p) => [p.lat, p.lon, p.count]));
+    }
   }
 
   function setupZoomHandler() {
     map.on("zoomend", async () => {
-      if (!map) return;
+      const zoom = map.getZoom();
+      const currentBin = getBin(zoom);
 
-      const currentBin = getBin(map.getZoom());
-      if (currentBin !== previousBin) {
+      if (zoom >= ZOOM_THRESHOLD && currentMode !== "markers") {
+        currentMode = "markers";
+
+        if (heatLayer) map.removeLayer(heatLayer);
         previousBin = currentBin;
-        await updateHeatmap();
+
+        const data = await fetchMarkerData(currentBin);
+        renderAircraftMarkers(data);
+      } else if (zoom < ZOOM_THRESHOLD && currentMode !== "heatmap") {
+        currentMode = "heatmap";
+
+        markerLayerGroup.clearLayers();
+        previousBin = currentBin;
+
+        const data = await fetchMarkerData(currentBin);
+        heatLayer = L.heatLayer(
+          data.map((p) => [p.lat, p.lon, p.count]),
+          {
+            radius: 15,
+            blur: 10,
+            maxZoom: 14,
+          },
+        ).addTo(map);
+      } else if (currentBin !== previousBin) {
+        previousBin = currentBin;
+
+        const data = await fetchMarkerData(currentBin);
+        if (currentMode === "heatmap" && heatLayer) {
+          heatLayer.setLatLngs(data.map((p) => [p.lat, p.lon, p.count]));
+        } else {
+          renderAircraftMarkers(data);
+        }
       }
     });
+  }
+
+  function renderAircraftMarkers(data: MarkerData[]) {
+    markerLayerGroup.clearLayers();
+
+    data.forEach((plane) => {
+      if (plane.lat && plane.lon) {
+        const marker = L.marker([plane.lat, plane.lon])
+          // .bindPopup(
+          //   `<strong>${plane.Callsign || "?"}</strong><br>${plane.OriginCountry || "Unknown"}`,
+          // )
+          .on("click", () => {
+            console.log("Clicked ID:", plane.id);
+          });
+
+        markerLayerGroup.addLayer(marker);
+      }
+    });
+
+    markerLayerGroup.addTo(map!);
   }
 
   onMount(async () => {
@@ -82,13 +138,25 @@
       },
     ).addTo(map);
 
-    previousBin = getBin(map.getZoom());
-    const initialData = await fetchHeatData(previousBin);
-    heatLayer = L.heatLayer(initialData, {
-      radius: 15,
-      blur: 10,
-      maxZoom: 14,
-    }).addTo(map);
+    const initialBin = getBin(map.getZoom());
+    previousBin = initialBin;
+
+    const initialData = await fetchMarkerData(initialBin);
+
+    if (map.getZoom() < ZOOM_THRESHOLD) {
+      currentMode = "heatmap";
+      heatLayer = L.heatLayer(
+        initialData.map((p) => [p.lat, p.lon, p.count]),
+        {
+          radius: 15,
+          blur: 10,
+          maxZoom: 14,
+        },
+      ).addTo(map);
+    } else {
+      currentMode = "markers";
+      renderAircraftMarkers(initialData);
+    }
 
     setupZoomHandler();
     interval = setInterval(updateHeatmap, POLL_INTERVAL_MS);
