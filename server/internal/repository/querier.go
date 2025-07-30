@@ -2,13 +2,14 @@
 // versions:
 //   sqlc v1.29.0
 
-package db
+package repository
 
 import (
 	"context"
 )
 
 type Querier interface {
+	GetAircraftData(ctx context.Context, id int32) (AircraftPosition, error)
 	GetHeatmapDataDynamic(ctx context.Context, arg GetHeatmapDataDynamicParams) ([]GetHeatmapDataDynamicRow, error)
 	InsertPosition(ctx context.Context, arg InsertPositionParams) error
 }

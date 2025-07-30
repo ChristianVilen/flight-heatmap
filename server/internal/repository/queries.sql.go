@@ -3,22 +3,47 @@
 //   sqlc v1.29.0
 // source: queries.sql
 
-package db
+package repository
 
 import (
 	"context"
 	"database/sql"
 )
 
+const getAircraftData = `-- name: GetAircraftData :one
+SELECT id, icao24, callsign, origin_country, time_position, longitude, latitude, baro_altitude, on_ground, velocity, heading, vertical_rate FROM aircraft_positions WHERE id = $1
+`
+
+func (q *Queries) GetAircraftData(ctx context.Context, id int32) (AircraftPosition, error) {
+	row := q.db.QueryRowContext(ctx, getAircraftData, id)
+	var i AircraftPosition
+	err := row.Scan(
+		&i.ID,
+		&i.Icao24,
+		&i.Callsign,
+		&i.OriginCountry,
+		&i.TimePosition,
+		&i.Longitude,
+		&i.Latitude,
+		&i.BaroAltitude,
+		&i.OnGround,
+		&i.Velocity,
+		&i.Heading,
+		&i.VerticalRate,
+	)
+	return i, err
+}
+
 const getHeatmapDataDynamic = `-- name: GetHeatmapDataDynamic :many
 SELECT
+  id,
   (floor(latitude * $1) / $1)::float8 AS lat_bin,
   (floor(longitude * $1) / $1)::float8 AS lon_bin,
   COUNT(*) AS count
 FROM aircraft_positions
 WHERE 
   ($2::text IS NULL OR time_position > now() - ($2 || ' minutes')::interval)
-GROUP BY lat_bin, lon_bin
+GROUP BY id, lat_bin, lon_bin
 `
 
 type GetHeatmapDataDynamicParams struct {
@@ -27,6 +52,7 @@ type GetHeatmapDataDynamicParams struct {
 }
 
 type GetHeatmapDataDynamicRow struct {
+	ID     int32
 	LatBin sql.NullFloat64
 	LonBin sql.NullFloat64
 	Count  int64
@@ -41,7 +67,12 @@ func (q *Queries) GetHeatmapDataDynamic(ctx context.Context, arg GetHeatmapDataD
 	var items []GetHeatmapDataDynamicRow
 	for rows.Next() {
 		var i GetHeatmapDataDynamicRow
-		if err := rows.Scan(&i.LatBin, &i.LonBin, &i.Count); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.LatBin,
+			&i.LonBin,
+			&i.Count,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

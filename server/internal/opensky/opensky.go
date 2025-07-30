@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/ChristianVilen/flight-heatmap/server/internal/config"
-	db "github.com/ChristianVilen/flight-heatmap/server/internal/db"
+	"github.com/ChristianVilen/flight-heatmap/server/internal/repository"
 )
 
 // OpenSkyResponse maps the full OpenSky state vector API
@@ -23,7 +23,7 @@ type OpenSkyResponse struct {
 }
 
 type positionInserter interface {
-	InsertPosition(ctx context.Context, params db.InsertPositionParams) error
+	InsertPosition(ctx context.Context, params repository.InsertPositionParams) error
 }
 
 type Fetcher struct {
@@ -112,7 +112,7 @@ func (f *Fetcher) storeStates(ctx context.Context, states [][]any) error {
 			continue
 		}
 
-		params := db.InsertPositionParams{
+		params := repository.InsertPositionParams{
 			Icao24:        toNullString(s[0]),
 			Callsign:      toNullString(s[1]),
 			OriginCountry: toNullString(s[2]),

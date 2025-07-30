@@ -1,12 +1,12 @@
 version: "2"
 sql:
-  - schema: "sql/migrations/"
+  - schema: "sql/migrations"
     queries: "sql/queries.sql"
     engine: "postgresql"
     gen:
       go:
-        package: "db"
-        out: "internal/db"
+        package: "repository"
+        out: "internal/repository"
         emit_interface: true
         overrides:
           - db_type: "text"

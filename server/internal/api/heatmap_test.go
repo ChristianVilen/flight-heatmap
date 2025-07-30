@@ -2,21 +2,22 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	db "github.com/ChristianVilen/flight-heatmap/server/internal/db"
+	"github.com/ChristianVilen/flight-heatmap/server/internal/repository"
 )
 
 type mockQueries struct{}
 
-func (m *mockQueries) GetHeatmapDataDynamic(ctx context.Context, args db.GetHeatmapDataDynamicParams) ([]db.GetHeatmapDataDynamicRow, error) {
-	return []db.GetHeatmapDataDynamicRow{
+func (m *mockQueries) GetHeatmapDataDynamic(ctx context.Context, args repository.GetHeatmapDataDynamicParams) ([]repository.GetHeatmapDataDynamicRow, error) {
+	return []repository.GetHeatmapDataDynamicRow{
 		{
-			LatBin: float64(60.25),
-			LonBin: float64(24.75),
+			LatBin: sql.NullFloat64{Float64: 60.25, Valid: true},
+			LonBin: sql.NullFloat64{Float64: 24.75, Valid: true},
 			Count:  int64(12),
 		},
 	}, nil
@@ -36,7 +37,7 @@ func TestHeatmapHandler(t *testing.T) {
 		t.Fatalf("expected 200 OK, got %d", resp.StatusCode)
 	}
 
-	var data []db.GetHeatmapDataDynamicRow
+	var data []repository.GetHeatmapDataDynamicRow
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		t.Fatal("invalid JSON response")
 	}

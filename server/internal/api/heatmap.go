@@ -9,16 +9,18 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/ChristianVilen/flight-heatmap/server/internal/db"
+	"github.com/ChristianVilen/flight-heatmap/server/internal/repository"
 )
 
 type HeatPoint struct {
+	ID    int32   `json:"id"`
 	Lat   float64 `json:"lat"`
 	Lon   float64 `json:"lon"`
 	Count int64   `json:"count"`
 }
+
 type HeatmapQuerier interface {
-	GetHeatmapDataDynamic(ctx context.Context, args db.GetHeatmapDataDynamicParams) ([]db.GetHeatmapDataDynamicRow, error)
+	GetHeatmapDataDynamic(ctx context.Context, args repository.GetHeatmapDataDynamicParams) ([]repository.GetHeatmapDataDynamicRow, error)
 }
 
 func HeatmapHandler(queries HeatmapQuerier) http.HandlerFunc {
@@ -41,7 +43,7 @@ func HeatmapHandler(queries HeatmapQuerier) http.HandlerFunc {
 			interval = sql.NullString{Valid: false} // explicitly invalid = no filtering
 		}
 
-		raw, err := queries.GetHeatmapDataDynamic(req.Context(), db.GetHeatmapDataDynamicParams{
+		raw, err := queries.GetHeatmapDataDynamic(req.Context(), repository.GetHeatmapDataDynamicParams{
 			BinSize:  sql.NullFloat64{Float64: float64(binSize), Valid: true},
 			Interval: interval,
 		})
@@ -54,6 +56,7 @@ func HeatmapHandler(queries HeatmapQuerier) http.HandlerFunc {
 		for _, row := range raw {
 			if row.LatBin.Valid && row.LonBin.Valid {
 				points = append(points, HeatPoint{
+					ID:    row.ID,
 					Lat:   row.LatBin.Float64,
 					Lon:   row.LonBin.Float64,
 					Count: row.Count,

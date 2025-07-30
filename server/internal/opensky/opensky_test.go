@@ -8,16 +8,16 @@ import (
 	"testing"
 
 	"github.com/ChristianVilen/flight-heatmap/server/internal/config"
-	"github.com/ChristianVilen/flight-heatmap/server/internal/db"
 	"github.com/ChristianVilen/flight-heatmap/server/internal/opensky"
+	"github.com/ChristianVilen/flight-heatmap/server/internal/repository"
 )
 
 // mockDB implements db.Querier for testing
 type mockDB struct {
-	inserted []db.InsertPositionParams
+	inserted []repository.InsertPositionParams
 }
 
-func (m *mockDB) InsertPosition(ctx context.Context, params db.InsertPositionParams) error {
+func (m *mockDB) InsertPosition(ctx context.Context, params repository.InsertPositionParams) error {
 	m.inserted = append(m.inserted, params)
 	return nil
 }
@@ -35,7 +35,7 @@ func TestFetchAndInsert(t *testing.T) {
 				24.75,        // longitude
 				60.25,        // latitude
 				3000.0,       // baro_altitude
-				true,         // on_ground
+				false,        // on_ground
 				250.0,        // velocity
 				180.0,        // heading
 				5.0,          // vertical_rate
@@ -43,10 +43,11 @@ func TestFetchAndInsert(t *testing.T) {
 		},
 	}
 
-	// Spin up fake API server
 	apiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(mockResponse)
 	}))
+
 	defer apiServer.Close()
 
 	mock := &mockDB{}
@@ -73,7 +74,8 @@ func TestFetchAndInsert(t *testing.T) {
 	if !insert.Icao24.Valid || insert.Icao24.String != "abc123" {
 		t.Errorf("expected Icao24=abc123, got: %v", insert.Icao24)
 	}
-	if !insert.OnGround.Valid || !insert.OnGround.Bool {
-		t.Errorf("expected OnGround=true, got: %v", insert.OnGround)
+
+	if !insert.OnGround.Valid || insert.OnGround.Bool {
+		t.Errorf("expected OnGround=false, got: %v", insert.OnGround)
 	}
 }

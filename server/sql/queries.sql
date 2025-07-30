@@ -11,11 +11,14 @@ INSERT INTO aircraft_positions (
 
 -- name: GetHeatmapDataDynamic :many
 SELECT
+  id,
   (floor(latitude * sqlc.arg(bin_size)) / sqlc.arg(bin_size))::float8 AS lat_bin,
   (floor(longitude * sqlc.arg(bin_size)) / sqlc.arg(bin_size))::float8 AS lon_bin,
   COUNT(*) AS count
 FROM aircraft_positions
 WHERE 
   (@interval::text IS NULL OR time_position > now() - (@interval || ' minutes')::interval)
-GROUP BY lat_bin, lon_bin;
+GROUP BY id, lat_bin, lon_bin;
 
+-- name: GetAircraftData :one
+SELECT * FROM aircraft_positions WHERE id = $1;

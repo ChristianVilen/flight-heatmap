@@ -14,9 +14,9 @@ import (
 
 	"github.com/ChristianVilen/flight-heatmap/server/internal/api"
 	"github.com/ChristianVilen/flight-heatmap/server/internal/config"
-	db "github.com/ChristianVilen/flight-heatmap/server/internal/db"
 	"github.com/ChristianVilen/flight-heatmap/server/internal/middleware"
 	"github.com/ChristianVilen/flight-heatmap/server/internal/opensky"
+	"github.com/ChristianVilen/flight-heatmap/server/internal/repository"
 )
 
 func init() {
@@ -53,7 +53,7 @@ func main() {
 	dbConn := connectToDBWithRetry(cfg, 10, 2*time.Second)
 	defer dbConn.Close()
 
-	queries := db.New(dbConn)
+	repo := repository.New(dbConn)
 	baseURL, err := url.Parse(APIURLStatesAll)
 	if err != nil {
 		log.Fatal("invalid base URL:", err)
@@ -74,7 +74,7 @@ func main() {
 	fetcher := opensky.Fetcher{
 		Client:       http.DefaultClient,
 		TokenFetcher: opensky.GetOpenSkyToken,
-		Inserter:     db.New(dbConn),
+		Inserter:     repository.New(dbConn),
 		Config:       cfg,
 		APIURL:       baseURL.String(),
 	}
@@ -95,7 +95,8 @@ func main() {
 
 	router := http.NewServeMux()
 
-	router.HandleFunc("GET /api/heatmap", api.HeatmapHandler(queries))
+	router.HandleFunc("GET /api/heatmap", api.HeatmapHandler(repo))
+	router.HandleFunc("GET /api/marker-details", api.MarkerDetailsHandler(repo))
 
 	stack := middleware.CreateStack(
 		middleware.Logging,
